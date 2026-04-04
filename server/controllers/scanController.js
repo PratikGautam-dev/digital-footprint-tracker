@@ -2,7 +2,8 @@ import {
   scanURLService,
   scanEmailService,
   scanFileService,
-  scanIdentityService
+  scanIdentityService,
+  scanFootprintService
 } from '../services/scanService.js';
 
 export const scanURLController = async (req, res) => {
@@ -51,6 +52,19 @@ export const scanIdentityController = async (req, res) => {
       return res.status(400).json({ success: false, message: "Input is required" });
     }
     const result = await scanIdentityService(input);
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const scanFootprintController = async (req, res) => {
+  try {
+    const { input } = req.body;
+    if (!input) {
+      return res.status(400).json({ success: false, message: "Input is required" });
+    }
+    const result = await scanFootprintService(input);
     return res.status(200).json({ success: true, data: result });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

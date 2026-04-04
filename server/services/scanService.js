@@ -13,6 +13,9 @@ const { scanIdentity } = identityScanner;
 import riskModel from '../../ai-engine/riskModel.js';
 const { getRiskScore } = riskModel;
 
+import footprintScanner from '../../footprint/footprintScanner.js';
+const { scanFootprint } = footprintScanner;
+
 import ScanResult from '../models/ScanResult.js';
 
 export const scanURLService = async (url) => {
@@ -78,6 +81,25 @@ export const scanIdentityService = async (input) => {
   
   const scanResult = new ScanResult({
     inputType: "identity",
+    inputValue: input,
+    riskScore: aiResult.riskScore,
+    riskLevel: aiResult.riskLevel,
+    reasons: scannerOutput.reasons,
+    recommendations: aiResult.recommendations,
+    explanation: aiResult.explanation,
+    metadata: scannerOutput.metadata
+  });
+  
+  await scanResult.save();
+  return scanResult;
+};
+
+export const scanFootprintService = async (input) => {
+  const scannerOutput = await scanFootprint(input);
+  const aiResult = await getRiskScore(scannerOutput);
+  
+  const scanResult = new ScanResult({
+    inputType: "footprint",
     inputValue: input,
     riskScore: aiResult.riskScore,
     riskLevel: aiResult.riskLevel,

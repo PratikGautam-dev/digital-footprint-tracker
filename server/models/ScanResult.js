@@ -4,7 +4,7 @@ const scanResultSchema = new mongoose.Schema({
   inputType: {
     type: String,
     required: true,
-    enum: ["url", "email", "file", "identity"],
+    enum: ["url", "email", "file", "identity", "footprint"],
   },
   inputValue: {
     type: String,
