@@ -7,7 +7,7 @@
 
 # testing
 /coverage
-
+build/
 # next.js
 /.next/
 /out/
@@ -39,3 +39,6 @@ next-env.d.ts
 # Prisma
 *.db
 *.db-journal
+.next/
+node_modules/
+.env

@@ -1,8 +1,18 @@
-import scanURL from '../../threat-detection/urlScanner.js';
-import scanFile from '../../threat-detection/fileScanner.js';
-import scanEmail from '../../identity-privacy/emailScanner.js';
-import scanIdentity from '../../identity-privacy/identityScanner.js';
-import getRiskScore from '../../ai-engine/riskModel.js';
+import urlScanner from '../../threat-detection/urlScanner.js';
+const { scanURL } = urlScanner;
+
+import fileScanner from '../../threat-detection/fileScanner.js';
+const { scanFile } = fileScanner;
+
+import emailScanner from '../../identity-privacy/emailScanner.js';
+const { scanEmail } = emailScanner;
+
+import identityScanner from '../../identity-privacy/identityScanner.js';
+const { scanIdentity } = identityScanner;
+
+import riskModel from '../../ai-engine/riskModel.js';
+const { getRiskScore } = riskModel;
+
 import ScanResult from '../models/ScanResult.js';
 
 export const scanURLService = async (url) => {
