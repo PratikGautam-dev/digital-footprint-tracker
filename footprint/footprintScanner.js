@@ -48,7 +48,8 @@ async function scanFootprint(input) {
 
     // Step 2 — Run Sherlock as Child Process
     const pythonPath = path.join(
-      process.cwd(),
+      __dirname,
+      '..',
       'sherlock-env',
       'Scripts',
       'python.exe'
