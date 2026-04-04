@@ -47,12 +47,12 @@ async function scanFootprint(input) {
     const username = result.metadata.username;
 
     // Step 2 — Run Sherlock as Child Process
-    const pythonPath = path.join(
+    const sherlockPath = path.join(
       __dirname,
       '..',
       'sherlock-env',
       'Scripts',
-      'python.exe'
+      'sherlock.exe'
     );
 
     let sherlockOutput = "";
@@ -61,7 +61,8 @@ async function scanFootprint(input) {
 
     await new Promise((resolve, reject) => {
       let isSettled = false;
-      const sherlockProcess = spawn(pythonPath, ['-m', 'sherlock', username, '--print-found']);
+      console.log(`[Sherlock Executing path]: ${sherlockPath} with username: ${username}`);
+      const sherlockProcess = spawn(sherlockPath, [username, '--print-found']);
 
       const timeoutId = setTimeout(() => {
         if (!isSettled) {
@@ -74,14 +75,17 @@ async function scanFootprint(input) {
       }, 120000); // 120 seconds
 
       sherlockProcess.stdout.on('data', (data) => {
-        sherlockOutput += data.toString();
+        const out = data.toString();
+        console.log("[Sherlock STDOUT]", out);
+        sherlockOutput += out;
       });
 
       sherlockProcess.stderr.on('data', (data) => {
-        // Capture stderr if needed, but not failing process per requirement.
+        console.error("[Sherlock STDERR]", data.toString());
       });
 
       sherlockProcess.on('close', (code) => {
+        console.log(`[Sherlock CLOSE] Exit code: ${code}`);
         if (!isSettled) {
           isSettled = true;
           clearTimeout(timeoutId);
@@ -94,7 +98,7 @@ async function scanFootprint(input) {
           isSettled = true;
           spawnError = true;
           clearTimeout(timeoutId);
-          result.reasons.push("Sherlock environment not found");
+          result.reasons.push("Sherlock error: " + err.message + " Path: " + sherlockPath);
           resolve(); 
         }
       });
