@@ -39,3 +39,14 @@ export const scanIdentity = async (input) => {
     throw new Error(error.response?.data?.message || error.message);
   }
 };
+
+export const scanFootprint = async (input) => {
+  try {
+    const response = await api.post('/api/scan-footprint', { input }, {
+      timeout: 150000 // 150 seconds for Sherlock
+    });
+    return response.data.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || error.message);
+  }
+};

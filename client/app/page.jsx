@@ -44,7 +44,7 @@ export default function Home() {
       </div>
 
       {/* Scanners Grid */}
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 pb-24 z-10">
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24 z-10">
         <Link href="/scan/url" className="group bg-[#0f1923] border border-[#21262d] rounded-xl p-8 hover:border-[#0ea5e9] hover:shadow-[0_0_20px_rgba(14,165,233,0.1)] transition-all duration-200">
           <div className="w-12 h-12 rounded-xl bg-[#0ea5e9]/20 flex items-center justify-center text-2xl mb-6 text-[#0ea5e9]">🔗</div>
           <h2 className="font-syne text-2xl font-bold text-white mb-3">URL Scanner</h2>
@@ -71,6 +71,14 @@ export default function Home() {
           <h2 className="font-syne text-2xl font-bold text-white mb-3">Identity Scanner</h2>
           <p className="text-[#8b949e] mb-8 font-inter">Check your digital footprint, usernames, and data breaches across the web.</p>
           <div className="text-[#3fb950] font-medium group-hover:translate-x-1 transition-transform inline-block font-inter">Scan Now →</div>
+        </Link>
+
+        {/* 5th Card - Centered on bottom row via col-span for md if needed, but flex wrap is better. Using grid it will naturally place it. */}
+        <Link href="/scan/footprint" className="group bg-[#0f1923] border border-[#21262d] rounded-xl p-8 hover:border-[#f97316] hover:shadow-[0_0_20px_rgba(249,115,22,0.1)] transition-all duration-200 lg:col-start-2">
+          <div className="w-12 h-12 rounded-xl bg-[#f97316]/20 flex items-center justify-center text-2xl mb-6 text-[#f97316]">🌐</div>
+          <h2 className="font-syne text-2xl font-bold text-white mb-3">Footprint Scanner</h2>
+          <p className="text-[#8b949e] mb-8 font-inter">Track your real presence across 300+ platforms with live OSINT analysis.</p>
+          <div className="text-[#f97316] font-medium group-hover:translate-x-1 transition-transform inline-block font-inter">Scan Now →</div>
         </Link>
       </div>
     </main>

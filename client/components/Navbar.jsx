@@ -30,6 +30,9 @@ export default function Navbar() {
             <Link href="/scan/identity" className={`relative transition-colors hover:text-[#0ea5e9] ${pathname === '/scan/identity' ? 'text-[#0ea5e9]' : 'text-[#8b949e]'}`}>
               Identity
             </Link>
+            <Link href="/scan/footprint" className={`relative transition-colors hover:text-[#0ea5e9] ${pathname === '/scan/footprint' ? 'text-[#0ea5e9]' : 'text-[#8b949e]'}`}>
+              <span className="md:hidden">🌐 </span>Footprint
+            </Link>
           </div>
           <div className="flex items-center gap-2 text-xs text-[#8b949e] bg-[#0d1117] px-3 py-1.5 rounded-full border border-[#21262d]">
             <span className="w-2 h-2 rounded-full bg-[#3fb950] block" style={{ animation: 'pulse-glow 2s infinite' }}></span>
