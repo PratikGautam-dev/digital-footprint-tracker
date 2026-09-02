@@ -3,7 +3,10 @@ import {
   scanEmailService,
   scanFileService,
   scanIdentityService,
-  scanFootprintService
+  scanFootprintService,
+  getAllResultsService,
+  getResultByIdService,
+  getStatsService
 } from '../services/scanService.js';
 
 export const scanURLController = async (req, res) => {
@@ -66,6 +69,37 @@ export const scanFootprintController = async (req, res) => {
     }
     const result = await scanFootprintService(input);
     return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getResultsController = async (req, res) => {
+  try {
+    const { limit } = req.query;
+    const results = await getAllResultsService(limit);
+    return res.status(200).json({ success: true, data: results });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getResultByIdController = async (req, res) => {
+  try {
+    const result = await getResultByIdService(req.params.id);
+    if (!result) {
+      return res.status(404).json({ success: false, message: "Result not found" });
+    }
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getStatsController = async (req, res) => {
+  try {
+    const stats = await getStatsService();
+    return res.status(200).json({ success: true, data: stats });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

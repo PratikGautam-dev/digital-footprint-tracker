@@ -1,264 +1,100 @@
-# Frontend — Aaryan
+# Frontend — Handoff / What's Left
 
-## Your Role
-You are responsible for everything the user sees and interacts with.
-Your job is to build a clean, functional dashboard that takes user 
-input, sends it to the backend, and displays the results clearly.
-
----
-
-## Your Assigned Folder
-- /client
+This replaces the old scaffolding instructions. Most of the original checklist
+is done — this file is now a status report + exact task list for whoever picks
+up `/client` next.
 
 ---
 
-## Your Branch
-feature/frontend
+## Current State (as of this handoff)
+
+Done and working:
+- All 5 scan pages exist and call the **real backend** (not mock data):
+  `app/scan/url`, `app/scan/email`, `app/scan/file`, `app/scan/identity`,
+  `app/scan/footprint`
+- `lib/api.js` has `scanURL`, `scanEmail`, `scanFile`, `scanIdentity`,
+  `scanFootprint`, plus two new functions you should now use:
+  `getResults(limit)` and `getStats()`
+- `components/ResultCard.jsx`, `RiskBadge.jsx`, `ReasonsList.jsx`,
+  `RecommendationsList.jsx` — all built and wired to the real API response
+  shape (`riskScore`, `riskLevel`, `explanation`, `reasons`, `recommendations`)
+- `app/dashboard/page.jsx` — **just rewired** off mock data. It now calls
+  `GET /api/results` and `GET /api/stats` on mount. This is the newest change
+  and the least battle-tested part of the app — treat it as a starting point,
+  not finished.
+
+Backend contract you can rely on (already implemented, don't need to touch):
+- `POST /api/scan-url` `{ url }`
+- `POST /api/scan-email` `{ emailText }`
+- `POST /api/scan-file` `{ filename }`
+- `POST /api/scan-identity` `{ input }`
+- `POST /api/scan-footprint` `{ input }` (slow — OSINT/Shermilock, can take
+  up to 2 min, `lib/api.js` already sets a 150s timeout for this one)
+- `GET /api/results?limit=20` → array of saved `ScanResult` documents, newest
+  first. Each has `_id`, `inputType`, `inputValue`, `riskScore`, `riskLevel`,
+  `reasons`, `recommendations`, `explanation`, `metadata`, `createdAt`,
+  `updatedAt` (timestamps come from Mongoose `timestamps: true`, **not** a
+  field called `timestamp` — this bit the dashboard before, don't reintroduce it)
+- `GET /api/results/:id` → single result, 404 if not found
+- `GET /api/stats` → `{ totalScans, highRisk, mediumRisk, lowRisk }`
+
+All responses are wrapped as `{ success: true, data: ... }` — `lib/api.js`
+already unwraps `.data.data` for you, so components just get the raw shape.
 
 ---
 
-## Important Rule
-You do NOT write any scanning logic, risk scoring, or AI logic.
-Your only job is:
-- Collect input from the user
-- Send it to the backend API
-- Display whatever the backend sends back
+## What's Actually Left To Do
+
+### 1. Verify the dashboard rewire end-to-end
+The dashboard was just switched from `mockResults` to real `getResults()` /
+`getStats()` calls. Run a few real scans through each of the 5 scan pages,
+then open `/dashboard` and confirm:
+- Cards render with real data, sorted newest-first
+- Stats row (Total Scans / High Risk / Low Risk) matches what's in Mongo
+- Empty state still shows correctly on a fresh DB
+- Error state shows if the backend is down (try stopping the server and
+  reloading `/dashboard`)
+
+### 2. Make a result clickable → detail view
+Right now dashboard cards are `cursor-pointer` but don't link anywhere.
+`GET /api/results/:id` already exists for this. Suggested: clicking a card
+routes to `/dashboard/[id]` and renders full `ResultCard` (you already have
+the component — it just needs a page and a fetch by id).
+
+### 3. Loading/error polish on the 5 scan pages
+Confirm each scan page (especially `scan/footprint`, which can take up to
+2 minutes) has a clear "scanning…" state so it doesn't look frozen, and a
+visible error message if the request fails or times out.
+
+### 4. Pagination or "load more" on dashboard history
+`getResults(limit)` currently defaults to 20 and there's no paging. Not
+urgent, but flag it if the team wants full history browsing.
+
+### 5. Nice-to-haves (only if time allows)
+- Filter dashboard history by `inputType` (url/email/file/identity/footprint)
+- Filter/sort by risk level
+- Auto-refresh dashboard after a scan completes (e.g. redirect to dashboard
+  post-scan, or a toast)
 
 ---
 
-## Tech Stack
-- Next.js (App Router)
-- Tailwind CSS
-- Axios (for API calls)
+## Known Rough Edges (not yours to fix, just context)
+
+- The footprint scanner shells out to a local Sherlock binary
+  (`sherlock-env/Scripts/sherlock.exe`) and can be slow/flaky — if
+  `scan/footprint` looks broken locally, check the backend console first
+  before assuming it's a frontend bug.
+- `server/*.txt` files (raw Sherlock output dumps) were cluttering `/server`
+  and are now gitignored — if you see new ones appear locally after testing
+  the footprint scanner, that's expected and fine to ignore.
 
 ---
 
-## Getting Started
+## Rules (unchanged from before)
 
-Inside /client run:
-npx create-next-app@latest .
-(select App Router when asked, select Tailwind CSS when asked)
-
-Then install Axios:
-npm install axios
-
----
-
-## Folder Structure You Must Create
-
-client/
-├── app/
-│   ├── page.jsx                  → Home / Landing page
-│   ├── dashboard/
-│   │   └── page.jsx              → Main dashboard
-│   ├── scan/
-│   │   ├── url/
-│   │   │   └── page.jsx          → URL scanner page
-│   │   ├── email/
-│   │   │   └── page.jsx          → Email scanner page
-│   │   ├── file/
-│   │   │   └── page.jsx          → File scanner page
-│   │   └── identity/
-│   │       └── page.jsx          → Identity scanner page
-├── components/
-│   ├── Navbar.jsx                → Top navigation bar
-│   ├── RiskBadge.jsx             → Shows Low / Medium / High badge
-│   ├── ResultCard.jsx            → Displays scan result
-│   ├── ReasonsList.jsx           → Lists reasons from scan
-│   └── RecommendationsList.jsx   → Lists recommendations
-├── lib/
-│   └── api.js                    → All Axios API call functions
-└── public/
-
----
-
-## File by File — What Each File Does
-
-### app/page.jsx (Landing Page)
-- Welcome message with project name
-- Brief description of what the tool does
-- Four buttons linking to each scanner
-- Clean, minimal design
-
-### app/dashboard/page.jsx (Dashboard)
-- Shows the most recent scan result
-- Displays risk score as a number
-- Shows risk level badge (Low / Medium / High)
-- Lists all reasons
-- Lists all recommendations
-- If no scan has been done yet, show a message
-
-### app/scan/url/page.jsx
-- Text input field for entering a URL
-- Submit button labeled "Scan URL"
-- On submit, call the scan URL API
-- Show loading state while waiting
-- On response, display ResultCard component
-
-### app/scan/email/page.jsx
-- Large textarea for pasting email content
-- Submit button labeled "Scan Email"
-- On submit, call the scan email API
-- Show loading state while waiting
-- On response, display ResultCard component
-
-### app/scan/file/page.jsx
-- Text input for entering a filename
-- (example: invoice.pdf.exe or report.docx)
-- Submit button labeled "Scan File"
-- On submit, call the scan file API
-- Show loading state while waiting
-- On response, display ResultCard component
-
-### app/scan/identity/page.jsx
-- Text input for entering a username or email
-- Submit button labeled "Scan Identity"
-- On submit, call the scan identity API
-- Show loading state while waiting
-- On response, display ResultCard component
-
-### components/RiskBadge.jsx
-- Takes riskLevel as a prop
-- Shows green badge for Low
-- Shows yellow badge for Medium
-- Shows red badge for High
-
-### components/ResultCard.jsx
-- Takes the full API response as a prop
-- Shows input value
-- Shows risk score as a number out of 100
-- Shows RiskBadge component
-- Shows ReasonsList component
-- Shows RecommendationsList component
-
-### components/ReasonsList.jsx
-- Takes reasons array as a prop
-- Renders each reason as a list item
-- Each item has a warning icon
-
-### components/RecommendationsList.jsx
-- Takes recommendations array as a prop
-- Renders each recommendation as a list item
-- Each item has a checkmark icon
-
-### lib/api.js
-- Contains all four API call functions
-- scanURL(url)
-- scanEmail(emailText)
-- scanFile(filename)
-- scanIdentity(username)
-- All functions use Axios to POST to the backend
-- Base URL should come from an environment variable
-
----
-
-## Environment Variables
-
-Create a .env.local file inside /client with:
-
-NEXT_PUBLIC_API_URL=http://localhost:5000
-
-Never hardcode the backend URL anywhere in your components.
-Always use process.env.NEXT_PUBLIC_API_URL
-
----
-
-## The API Contract (What the Backend Returns)
-
-Pratik's backend will return this structure for every scan:
-
-{
-  inputType: "url",
-  inputValue: "http://example.com",
-  riskScore: 75,
-  riskLevel: "High",
-  reasons: [
-    "Contains suspicious keywords",
-    "No HTTPS detected"
-  ],
-  recommendations: [
-    "Do not visit this URL",
-    "Report to your IT team"
-  ]
-}
-
-Build all your components around this structure.
-Do not assume any other format.
-
----
-
-## How to Work Before Backend is Ready
-
-Pratik may not finish the backend immediately.
-Do NOT wait for him. Use this mock response object in your
-components while developing:
-
-const mockResponse = {
-  inputType: "url",
-  inputValue: "http://suspicious-site.com",
-  riskScore: 82,
-  riskLevel: "High",
-  reasons: [
-    "Contains suspicious keywords",
-    "No HTTPS detected",
-    "Known phishing pattern found"
-  ],
-  recommendations: [
-    "Do not visit this URL",
-    "Clear your browser cache",
-    "Report to your IT team"
-  ]
-}
-
-Once Pratik's backend is live, replace the mock with the real API call.
-
----
-
-## Design Guidelines
-
-- Use Tailwind CSS only, no external UI libraries
-- Keep the design clean and minimal
-- Use these colors for risk levels:
-  - Low    → green  (text-green-500, bg-green-100)
-  - Medium → yellow (text-yellow-500, bg-yellow-100)
-  - High   → red    (text-red-500, bg-red-100)
-- Mobile responsive is a bonus but not required
-- Focus on functionality first, polish second
-
----
-
-## Your Testing Approach
-
-1. Build all pages using the mock response first
-2. Make sure every component renders correctly
-3. When Pratik says the backend is ready, swap mock for real API
-4. Test each scan page end to end
-
----
-
-## What You Must NOT Do
-
-- Do not write any scanning logic
-- Do not connect to MongoDB
-- Do not create any backend files
-- Do not touch /server, /ai-engine, or /security folders
-- Do not push to main directly
-
----
-
-## Checklist Before Raising Pull Request
-
-- [ ] All four scan pages work with mock data
-- [ ] ResultCard displays all fields correctly
-- [ ] RiskBadge shows correct color per risk level
-- [ ] API calls in lib/api.js are correctly structured
-- [ ] Environment variable is used for base URL
-- [ ] No hardcoded backend URLs anywhere
-- [ ] Tested with real backend once Pratik is ready
-
----
-
-## Questions?
-
-All questions go to Pratik — he owns the backend and API contract.
-If the API response changes, Pratik will inform you directly.
+- Stay in `/client`. Don't touch `/server`, `/ai-engine`,
+  `/threat-detection`, `/identity-privacy`, `/footprint`.
+- Don't write scanning/risk logic — that's backend/AI-engine territory.
+- Use `process.env.NEXT_PUBLIC_API_URL`, never hardcode the backend URL.
+- Tailwind only, no external UI libraries.
+- Questions about the API contract go to Pratik (backend/integration owner).

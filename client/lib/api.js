@@ -50,3 +50,21 @@ export const scanFootprint = async (input) => {
     throw new Error(error.response?.data?.message || error.message);
   }
 };
+
+export const getResults = async (limit = 20) => {
+  try {
+    const response = await api.get('/api/results', { params: { limit } });
+    return response.data.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || error.message);
+  }
+};
+
+export const getStats = async () => {
+  try {
+    const response = await api.get('/api/stats');
+    return response.data.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || error.message);
+  }
+};

@@ -94,6 +94,25 @@ export const scanIdentityService = async (input) => {
   return scanResult;
 };
 
+export const getAllResultsService = async (limit = 20) => {
+  return ScanResult.find().sort({ createdAt: -1 }).limit(Number(limit));
+};
+
+export const getResultByIdService = async (id) => {
+  return ScanResult.findById(id);
+};
+
+export const getStatsService = async () => {
+  const [totalScans, highRisk, mediumRisk, lowRisk] = await Promise.all([
+    ScanResult.countDocuments(),
+    ScanResult.countDocuments({ riskLevel: "High" }),
+    ScanResult.countDocuments({ riskLevel: "Medium" }),
+    ScanResult.countDocuments({ riskLevel: "Low" }),
+  ]);
+
+  return { totalScans, highRisk, mediumRisk, lowRisk };
+};
+
 export const scanFootprintService = async (input) => {
   const scannerOutput = await scanFootprint(input);
   const aiResult = await getRiskScore(scannerOutput);

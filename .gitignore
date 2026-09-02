@@ -42,3 +42,6 @@ next-env.d.ts
 .next/
 node_modules/
 .env
+
+# sherlock scan output dumps (test debris, may contain teammate usernames)
+server/*.txt

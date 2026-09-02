@@ -2,49 +2,44 @@
 
 import { useState, useEffect } from 'react';
 import RiskBadge from '../../components/RiskBadge';
-
-const mockResults = [
-  {
-    inputType: "url",
-    inputValue: "http://paypa1-secure.tk",
-    riskScore: 95,
-    riskLevel: "High",
-    explanation: "Multiple high risk indicators detected",
-    reasons: ["Domain spoofing detected", "High risk TLD"],
-    recommendations: ["Do not visit this URL"],
-    timestamp: new Date().toISOString()
-  },
-  {
-    inputType: "file",
-    inputValue: "invoice.pdf.exe",
-    riskScore: 90,
-    riskLevel: "High",
-    explanation: "Dangerous file pattern detected",
-    reasons: ["Double extension detected"],
-    recommendations: ["Delete this file immediately"],
-    timestamp: new Date().toISOString()
-  }
-];
+import { getResults, getStats } from '../../lib/api';
 
 export default function DashboardPage() {
   const [results, setResults] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // In the future this will fetch from the backend:
-    // fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/results`)
-    //   .then(res => res.json())
-    //   .then(data => setResults(data));
-    
-    // Using mock data until endpoint is ready
-    setTimeout(() => {
-      setResults(mockResults);
-      setLoading(false);
-    }, 500);
+    let cancelled = false;
+
+    Promise.all([getResults(20), getStats()])
+      .then(([resultsData, statsData]) => {
+        if (cancelled) return;
+        setResults(resultsData || []);
+        setStats(statsData || null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   const getRelativeTime = (timestamp) => {
-    return "Just now"; // Simplification for exact mockup look
+    if (!timestamp) return "";
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   };
 
   const getCardBorder = (level) => {
@@ -63,22 +58,22 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-[#0f1923] p-6 rounded-xl border border-[#21262d]">
             <div className="text-[#0ea5e9] text-xl mb-4">●</div>
-            <div className="font-jetbrains text-4xl font-bold text-[#f0f6fc] mb-1">{results.length}</div>
+            <div className="font-jetbrains text-4xl font-bold text-[#f0f6fc] mb-1">{stats?.totalScans ?? results.length}</div>
             <div className="text-[#8b949e] text-sm uppercase tracking-widest font-bold">Total Scans</div>
           </div>
           <div className="bg-[#0f1923] p-6 rounded-xl border border-[#21262d]">
             <div className="text-[#f85149] text-xl mb-4">▲</div>
             <div className="font-jetbrains text-4xl font-bold text-[#f0f6fc] mb-1">
-              {results.filter(r => r.riskLevel === 'High').length}
+              {stats?.highRisk ?? results.filter(r => r.riskLevel === 'High').length}
             </div>
             <div className="text-[#8b949e] text-sm uppercase tracking-widest font-bold">High Risk Detections</div>
           </div>
           <div className="bg-[#0f1923] p-6 rounded-xl border border-[#21262d]">
             <div className="text-[#3fb950] text-xl mb-4">■</div>
             <div className="font-jetbrains text-4xl font-bold text-[#f0f6fc] mb-1">
-              {results.filter(r => r.riskLevel === 'Low').length}
+              {stats?.lowRisk ?? results.filter(r => r.riskLevel === 'Low').length}
             </div>
-            <div className="text-[#8b949e] text-sm uppercase tracking-widest font-bold">Threats Neutralized</div>
+            <div className="text-[#8b949e] text-sm uppercase tracking-widest font-bold">Low Risk Scans</div>
           </div>
         </div>
 
@@ -90,17 +85,21 @@ export default function DashboardPage() {
             <div className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9]"></div>
             <div className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9]"></div>
           </div>
+        ) : error ? (
+          <div className="bg-[#0f1923] border border-[#f85149]/40 rounded-xl p-12 text-center text-[#f85149] font-inter">
+            Could not reach the backend: {error}
+          </div>
         ) : results.length === 0 ? (
           <div className="bg-[#0f1923] border border-[#21262d] rounded-xl p-12 text-center text-[#8b949e] font-inter">
             No scans performed yet. Initialize a scan to populate intelligence.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {results.map((result, idx) => (
-              <div key={idx} className={`bg-[#0d1117] border border-[#21262d] rounded-xl p-6 transition-all duration-200 cursor-pointer ${getCardBorder(result.riskLevel)}`}>
+            {results.map((result) => (
+              <div key={result._id} className={`bg-[#0d1117] border border-[#21262d] rounded-xl p-6 transition-all duration-200 cursor-pointer ${getCardBorder(result.riskLevel)}`}>
                 <div className="flex justify-between items-center mb-4">
                   <span className="bg-[#21262d] text-[#f0f6fc] text-xs font-bold px-2 py-1 rounded uppercase tracking-widest">{result.inputType}</span>
-                  <span className="text-[#8b949e] text-xs font-inter">{getRelativeTime(result.timestamp)}</span>
+                  <span className="text-[#8b949e] text-xs font-inter">{getRelativeTime(result.createdAt)}</span>
                 </div>
                 <div className="font-jetbrains text-[#f0f6fc] text-lg truncate mb-6" title={result.inputValue}>
                   {result.inputValue}
