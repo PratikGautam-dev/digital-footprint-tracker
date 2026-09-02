@@ -55,25 +55,74 @@ then open `/dashboard` and confirm:
 - Error state shows if the backend is down (try stopping the server and
   reloading `/dashboard`)
 
-### 2. Make a result clickable → detail view
-Right now dashboard cards are `cursor-pointer` but don't link anywhere.
-`GET /api/results/:id` already exists for this. Suggested: clicking a card
-routes to `/dashboard/[id]` and renders full `ResultCard` (you already have
-the component — it just needs a page and a fetch by id).
-
-### 3. Loading/error polish on the 5 scan pages
+### 2. Loading/error polish on the 5 scan pages
 Confirm each scan page (especially `scan/footprint`, which can take up to
 2 minutes) has a clear "scanning…" state so it doesn't look frozen, and a
 visible error message if the request fails or times out.
 
-### 4. Pagination or "load more" on dashboard history
-`getResults(limit)` currently defaults to 20 and there's no paging. Not
-urgent, but flag it if the team wants full history browsing.
+---
 
-### 5. Nice-to-haves (only if time allows)
-- Filter dashboard history by `inputType` (url/email/file/identity/footprint)
-- Filter/sort by risk level
-- Auto-refresh dashboard after a scan completes (e.g. redirect to dashboard
+## Priority Features (Do These Next, In Order)
+
+These are the top 3 features to push this from "working" to "a real digital
+footprint tracker." All three are buildable entirely in `/client` — no new
+backend endpoints needed, so you're not blocked waiting on anyone.
+
+### Feature 1 — Result detail page
+Right now dashboard cards are `cursor-pointer` but don't link anywhere.
+
+- Add `app/dashboard/[id]/page.jsx`
+- On load, call `getResultById` (add this one function to `lib/api.js` — it's
+  just `api.get('/api/results/:id')`, same pattern as `getResults`)
+- Render the existing `ResultCard` component with the fetched result
+- Wrap each card in `app/dashboard/page.jsx` in a `<Link href={`/dashboard/${result._id}`}>`
+- Handle the 404 case (bad/deleted id) with a simple "not found" message
+
+This is the smallest of the three and unblocks the other two, since both
+also need a way to view a single past scan.
+
+### Feature 2 — Exposure trend over time (footprint scans)
+The point of a *tracker* is watching exposure change across repeated scans of
+the same identity, not just one-off snapshots. You don't need a new backend
+endpoint for this — `GET /api/results` already returns every saved scan with
+`inputType`, `inputValue`, `riskScore`, and `createdAt`.
+
+- New page: `app/scan/footprint/history/page.jsx` (or a tab inside the
+  existing footprint page)
+- Add an input for username/email, fetch `getResults(100)` client-side, and
+  filter to `inputType === 'footprint' && inputValue === thatInput`
+  (normalize case/whitespace the same way `footprintScanner.js` does —
+  lowercase + trim)
+- Sort by `createdAt` ascending and plot `riskScore` (exposure) over time —
+  a simple SVG line/bar chart is enough, no charting library needed (see
+  the existing gauge SVGs in `scan/footprint/page.jsx` for the pattern
+  already used in this codebase)
+- If there's only one scan for that identity, show a message like "Scan
+  again later to start tracking your exposure trend" instead of an empty chart
+
+### Feature 3 — Actionable cleanup checklist per platform
+Turns a footprint scan from "here's what we found" into "here's what to do
+about it." Fully client-side, no backend change needed.
+
+- In `scan/footprint/page.jsx`, next to each platform card in "Confirmed
+  Platform Detections," add a checkbox: "I've removed/secured this account"
+- Persist checked state in `localStorage`, keyed by `${result._id}_${platform}`
+  (or by username+platform if you want it to persist across re-scans of the
+  same identity)
+- Show a small progress indicator ("3 of 8 platforms addressed") above the
+  platform list
+- Optional stretch: maintain a static map of common deactivation URLs
+  (`{ github: 'https://github.com/settings/admin', instagram: '...', ... }`)
+  and show a "Manage this account →" link per platform when one exists,
+  falling back to the profile URL already returned by the scanner otherwise
+
+---
+
+## Lower-Priority / Nice-to-Haves (only if time allows after the 3 above)
+- Pagination or "load more" on dashboard history (`getResults(limit)` has no
+  paging yet)
+- Filter dashboard history by `inputType` or risk level
+- Auto-refresh dashboard after a scan completes (redirect to dashboard
   post-scan, or a toast)
 
 ---
