@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import RiskBadge from '../../components/RiskBadge';
 import { getResults, getStats } from '../../lib/api';
 
@@ -96,7 +97,8 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {results.map((result) => (
-              <div key={result._id} className={`bg-[#0d1117] border border-[#21262d] rounded-xl p-6 transition-all duration-200 cursor-pointer ${getCardBorder(result.riskLevel)}`}>
+              <Link key={result._id} href={`/dashboard/${result._id}`}
+                className={`block bg-[#0d1117] border border-[#21262d] rounded-xl p-6 transition-all duration-200 cursor-pointer ${getCardBorder(result.riskLevel)}`}>
                 <div className="flex justify-between items-center mb-4">
                   <span className="bg-[#21262d] text-[#f0f6fc] text-xs font-bold px-2 py-1 rounded uppercase tracking-widest">{result.inputType}</span>
                   <span className="text-[#8b949e] text-xs font-inter">{getRelativeTime(result.createdAt)}</span>
@@ -110,7 +112,7 @@ export default function DashboardPage() {
                     color: result.riskLevel === 'Low' ? '#3fb950' : result.riskLevel === 'Medium' ? '#d29922' : '#f85149'
                   }}>{result.riskScore}</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

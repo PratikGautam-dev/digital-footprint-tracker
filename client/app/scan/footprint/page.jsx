@@ -1,10 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { scanFootprint } from '../../../lib/api';
 import RiskBadge from '../../../components/RiskBadge';
 import ReasonsList from '../../../components/ReasonsList';
 import RecommendationsList from '../../../components/RecommendationsList';
+
+// Static map of deactivation/account-management URLs per platform
+const DEACTIVATION_URLS = {
+  github: 'https://github.com/settings/admin',
+  instagram: 'https://www.instagram.com/accounts/remove/request/permanent/',
+  twitter: 'https://twitter.com/settings/account',
+  facebook: 'https://www.facebook.com/help/224562897555674',
+  reddit: 'https://www.reddit.com/settings/',
+  linkedin: 'https://www.linkedin.com/psettings/member-data',
+  snapchat: 'https://accounts.snapchat.com/accounts/delete_account',
+  tiktok: 'https://www.tiktok.com/setting/',
+  pinterest: 'https://www.pinterest.com/settings/',
+  tumblr: 'https://www.tumblr.com/settings/account',
+  steam: 'https://help.steampowered.com/en/faqs/view/1141-6372-A35D-A3DE',
+  twitch: 'https://www.twitch.tv/settings/profile',
+  gitlab: 'https://gitlab.com/-/profile/account',
+  npm: 'https://www.npmjs.com/settings/~/profile',
+  stackoverflow: 'https://stackoverflow.com/users/delete/current',
+  medium: 'https://medium.com/me/settings',
+  quora: 'https://www.quora.com/account',
+  producthunt: 'https://www.producthunt.com/settings',
+};
 
 export default function ScanFootprintPage() {
   const [input, setInput] = useState('');
@@ -14,6 +37,8 @@ export default function ScanFootprintPage() {
   const [progress, setProgress] = useState(0);
   const [scanStage, setScanStage] = useState('');
   const [stageHistory, setStageHistory] = useState([]);
+  // Cleanup checklist: { [resultId_platform]: boolean }
+  const [checklist, setChecklist] = useState({});
 
   const stages = [
     "[*] Initializing Sherlock OSINT engine...",
@@ -76,12 +101,29 @@ export default function ScanFootprintPage() {
     try {
       const data = await scanFootprint(input);
       setResult(data);
+      // Load checklist from localStorage when result arrives
+      if (data?._id) {
+        const stored = {};
+        const platforms = data.metadata?.sherlockRaw || [];
+        platforms.forEach(({ platform }) => {
+          const key = `${data._id}_${platform.toLowerCase()}`;
+          stored[key] = localStorage.getItem(key) === 'true';
+        });
+        setChecklist(stored);
+      }
     } catch (err) {
       setError(err.message || 'An error occurred during scanning');
     } finally {
       setLoading(false);
       setProgress(100);
     }
+  };
+
+  const toggleChecklist = (resultId, platform) => {
+    const key = `${resultId}_${platform.toLowerCase()}`;
+    const newVal = !checklist[key];
+    localStorage.setItem(key, String(newVal));
+    setChecklist((prev) => ({ ...prev, [key]: newVal }));
   };
 
   const getExposureColor = (level) => {
@@ -197,6 +239,10 @@ export default function ScanFootprintPage() {
             
             <div className="flex items-center gap-2 mb-4">
               <button onClick={() => setResult(null)} className="text-[#8b949e] hover:text-[#f0f6fc] text-sm font-inter">← New Scan</button>
+              <span className="text-[#21262d]">|</span>
+              <Link href="/scan/footprint/history" className="text-[#8b5cf6] hover:text-[#a78bfa] text-sm font-inter transition-colors">
+                📈 View Exposure Trend
+              </Link>
             </div>
 
             {/* Header Card */}
@@ -288,9 +334,30 @@ export default function ScanFootprintPage() {
             {/* Detected Platforms List */}
             {result.metadata.platformsDetected && result.metadata.platformsDetected.length > 0 && (
               <div>
-                <div className="mb-6 border-b border-[#21262d] pb-4">
-                  <h2 className="font-syne text-2xl font-bold text-[#f0f6fc]">Confirmed Platform Detections</h2>
-                  <p className="text-[#8b949e] font-inter">{result.metadata.totalPlatformsFound} real accounts found</p>
+                <div className="mb-4 border-b border-[#21262d] pb-4 flex flex-col md:flex-row md:items-end justify-between gap-3">
+                  <div>
+                    <h2 className="font-syne text-2xl font-bold text-[#f0f6fc]">Confirmed Platform Detections</h2>
+                    <p className="text-[#8b949e] font-inter">{result.metadata.totalPlatformsFound} real accounts found</p>
+                  </div>
+                  {/* Progress indicator */}
+                  {result.metadata.sherlockRaw?.length > 0 && (() => {
+                    const total = result.metadata.sherlockRaw.length;
+                    const done = result.metadata.sherlockRaw.filter(({ platform }) =>
+                      checklist[`${result._id}_${platform.toLowerCase()}`]
+                    ).length;
+                    const pct = Math.round((done / total) * 100);
+                    return (
+                      <div className="flex flex-col items-end gap-1">
+                        <p className="text-sm font-inter text-[#8b949e]">
+                          <span className="text-[#3fb950] font-bold">{done}</span> of {total} platforms addressed
+                        </p>
+                        <div className="w-40 h-1.5 bg-[#21262d] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-[#3fb950] transition-all duration-500"
+                            style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -306,22 +373,55 @@ export default function ScanFootprintPage() {
                     else category = 'Other';
 
                     const catColor = getCategoryColor(category);
+                    const checkKey = `${result._id}_${p}`;
+                    const isChecked = !!checklist[checkKey];
+                    const manageUrl = DEACTIVATION_URLS[p] || item.url;
 
                     return (
-                      <div key={idx} className="bg-[#0f1923] border border-[#21262d] rounded-lg p-5 flex items-start gap-4 transition-all hover:border-[color:var(--hover-color)] hover:shadow-[0_0_15px_var(--hover-shadow)] group" 
-                           style={{ '--hover-color': catColor, '--hover-shadow': `${catColor}30` }}>
-                        <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: catColor }}></div>
+                      <div key={idx}
+                        className={`bg-[#0f1923] border rounded-lg p-5 flex items-start gap-4 transition-all duration-200 ${
+                          isChecked
+                            ? 'border-[#3fb950]/40 bg-[#3fb950]/5 opacity-70'
+                            : 'border-[#21262d] hover:border-[color:var(--hover-color)] hover:shadow-[0_0_15px_var(--hover-shadow)]'
+                        } group`}
+                        style={{ '--hover-color': catColor, '--hover-shadow': `${catColor}30` }}>
+                        {/* Category dot */}
+                        <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: catColor }} />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start mb-1">
-                            <h3 className="text-[#f0f6fc] font-bold font-inter truncate pr-2">{item.platform}</h3>
-                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded border" style={{ color: catColor, borderColor: `${catColor}40`, backgroundColor: `${catColor}10` }}>
+                            <h3 className={`font-bold font-inter truncate pr-2 ${isChecked ? 'line-through text-[#8b949e]' : 'text-[#f0f6fc]'}`}>
+                              {item.platform}
+                            </h3>
+                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded border flex-shrink-0"
+                              style={{ color: catColor, borderColor: `${catColor}40`, backgroundColor: `${catColor}10` }}>
                               {category}
                             </span>
                           </div>
                           <p className="text-[#8b949e] font-jetbrains text-xs truncate mb-3">{item.url}</p>
-                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9] text-sm hover:underline font-medium inline-flex items-center gap-1 group-hover:text-[#06b6d4]">
-                            View Profile ↗
-                          </a>
+                          <div className="flex items-center justify-between gap-3">
+                            <a href={item.url} target="_blank" rel="noopener noreferrer"
+                              className="text-[#0ea5e9] text-sm hover:underline font-medium inline-flex items-center gap-1 group-hover:text-[#06b6d4]">
+                              View Profile ↗
+                            </a>
+                            <a href={manageUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-[#8b949e] hover:text-[#f0f6fc] transition-colors font-inter whitespace-nowrap">
+                              Manage →
+                            </a>
+                          </div>
+                          {/* Cleanup checkbox */}
+                          <label className="flex items-center gap-2 mt-3 pt-3 border-t border-[#21262d] cursor-pointer group/check select-none">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleChecklist(result._id, item.platform)}
+                              className="w-4 h-4 rounded border-[#21262d] accent-[#3fb950] cursor-pointer"
+                            />
+                            <span className={`text-xs font-inter transition-colors ${
+                              isChecked ? 'text-[#3fb950]' : 'text-[#8b949e] group-hover/check:text-[#f0f6fc]'
+                            }`}>
+                              {isChecked ? '✓ Secured / Removed' : "I've removed / secured this account"}
+                            </span>
+                          </label>
                         </div>
                       </div>
                     );

@@ -20,7 +20,7 @@ async function scanIdentity(input) {
   const inputLower = (input || "").toLowerCase().trim();
 
   // Step 1: Detect Input Type
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
   if (emailRegex.test(inputLower)) {
     inputType = "email";
   }
@@ -33,12 +33,12 @@ async function scanIdentity(input) {
      usernamePart = inputLower.split('@')[0];
   }
 
-  const veryHighRiskUsernames = [
-    'admin', 'administrator', 'root', 'user', 'test', 'guest',
-    'password', '123456', 'default', 'superuser'
-  ];
+  const HIGH_RISK_USERNAMES = new Set([
+    'admin', 'administrator', 'root', 'user', 'test', 'guest', 'password',
+    '123456', 'default', 'superuser',
+  ]);
 
-  if (veryHighRiskUsernames.some(u => usernamePart.includes(u))) {
+  if (HIGH_RISK_USERNAMES.has(usernamePart)) {
      reasons.push("High risk username pattern detected");
      usernameRiskFlags.push("high_risk_pattern");
      score += 25;
@@ -56,11 +56,12 @@ async function scanIdentity(input) {
   }
 
   // Common first name detection
-  const commonNames = [
-    'john', 'jane', 'mike', 'david', 'chris', 'alex', 'sarah',
-    'priya', 'rahul', 'amit', 'raj', 'anjali', 'neha', 'rohit'
+  const COMMON_NAMES = [
+    'john', 'jane', 'mike', 'david', 'chris', 'alex', 'sarah', 'priya',
+    'rahul', 'amit', 'raj', 'anjali', 'neha', 'rohit', 'imp', 'sam', 'tom',
+    'james', 'emma', 'olivia',
   ];
-  if (commonNames.some(n => usernamePart.includes(n))) {
+   if (COMMON_NAMES.some(n => usernamePart.includes(n))) {
      reasons.push("Common real name used as username");
      usernameRiskFlags.push("common_first_name");
      score += 10;
@@ -70,15 +71,23 @@ async function scanIdentity(input) {
   let domainPart = "";
   if (inputType === "email") {
      domainPart = inputLower.split('@')[1] || "";
-     const freeDomains = ['gmail', 'yahoo', 'hotmail', 'outlook', 'rediffmail'];
-     const disposableDomains = ['tempmail', 'mailinator', 'guerrillamail', 'throwam', 'yopmail', 'sharklasers', 'trashmail'];
+    const FREE_EMAIL_DOMAINS = new Set([
+      'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
+      'mail.com', 'protonmail.com', 'icloud.com', 'yandex.com', 'rediffmail.com',
+      'zoho.com',
+    ]);
+    const DISPOSABLE_EMAIL_DOMAINS = new Set([
+      'tempmail.com', 'mailinator.com', 'guerrillamail.com', 'throwam.com',
+      'yopmail.com', 'sharklasers.com', 'trashmail.com', '10minutemail.com',
+      'dispostable.com', 'fakeinbox.com', 'maildrop.cc',
+    ]);
 
-     if (freeDomains.some(d => domainPart.includes(d))) {
+    if (FREE_EMAIL_DOMAINS.has(domainPart)) {
         reasons.push("Free email domain detected");
         score += 10;
      }
 
-     if (disposableDomains.some(d => domainPart.includes(d))) {
+    if (DISPOSABLE_EMAIL_DOMAINS.has(domainPart)) {
         reasons.push("Disposable email domain detected");
         score += 25;
      }
@@ -89,29 +98,25 @@ async function scanIdentity(input) {
   const gamingPlatforms = ['Steam', 'Xbox', 'PlayStation'];
   const professionalPlatforms = ['GitHub', 'Behance', 'Dribbble'];
 
-  const usernameLength = usernamePart.length;
+  const usernameLength = usernamePart.replace(/[._-]/g, '').length;
   let simulatedPlatformsFound = [];
 
-  const onlyLettersAndNumbers = /^[a-z0-9]+$/i.test(usernamePart);
+  const validUsername = /^[a-z0-9._-]+$/i.test(usernamePart);
   const containsNumbers = /\d/.test(usernamePart);
   
-  if (usernameLength >= 4 && usernameLength <= 20 && onlyLettersAndNumbers) {
+  if (usernameLength >= 4 && usernameLength <= 30 && validUsername) {
       simulatedPlatformsFound.push(...socialPlatforms);
   }
   
-  if (containsNumbers) {
+  if (containsNumbers && validUsername) {
       simulatedPlatformsFound.push(...gamingPlatforms);
   }
   
-  if (!containsNumbers && usernameLength >= 4 && usernameLength <= 20) {
-      simulatedPlatformsFound.push(...professionalPlatforms);
-  }
-
   if (simulatedPlatformsFound.length > 0) {
      const uniquePlatforms = [...new Set(simulatedPlatformsFound)];
      exposedPlatforms.push(...uniquePlatforms);
-     reasons.push(`Likely exposed on: ${uniquePlatforms.join(', ')}`);
-     score += (8 * uniquePlatforms.length);
+    reasons.push(`This username may be reused on ${uniquePlatforms.join(', ')}.`);
+    score += Math.min(uniquePlatforms.length * 2, 14);
   }
 
   // 3.4. Exposure Level Classification
